@@ -51,7 +51,7 @@ class UserViewController: UIViewController {
             $0.centerX.equalToSuperview()
             $0.top.equalTo(cityTextField.snp.bottom).offset(50)
         }
-        // Do any additional setup after loading the view.
+        print("USER'S ID IS \(user?.id)")
     }
 
     override func didReceiveMemoryWarning() {
@@ -66,6 +66,11 @@ class UserViewController: UIViewController {
         guard let name = nameTextField.text else { return }
         
         APIClient.putSpotifyUserData(user: unwrappedUser, newName: name, newCity: city)
+        
+        navigationController?.popToRootViewController(animated: true)
+        
+        
+        
         
     }
     

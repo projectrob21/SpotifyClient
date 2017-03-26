@@ -18,9 +18,16 @@ class MainViewController: UIViewController {
     let searchButton = UIButton()
     let excludeButton = UIButton()
     let excludeLabel = UILabel()
+    var segmentedContoller: UISegmentedControl!
     
     var isExcludingSearch = false
-    var searchBranch: Branch = .name
+    var searchBranch: Branch {
+        if segmentedContoller.selectedSegmentIndex == 0 {
+            return .name
+        } else {
+            return .city
+        }
+    }
     
     var addUserViewController: AddUserViewController!
 
@@ -37,6 +44,9 @@ class MainViewController: UIViewController {
             }
             OperationQueue.main.addOperation {
                 print("number of users is \(self.users.count)")
+                self.users = self.users.sorted(by: {
+                    $0.0.id < $0.1.id
+                })
                 self.tableView.reloadData()
             }
         }
@@ -46,17 +56,36 @@ class MainViewController: UIViewController {
         
     }
 
-    override func viewDidAppear(_ animated: Bool) {
-        tableView.reloadData()
+    override func viewWillAppear(_ animated: Bool) {
+        print("VIEW DID APPEAR")
+        APIClient.getSpotifyUsersData(branch: "people", not: false, nameOrID: nil) { (jsonData) in
+            self.users = []
+            for response in jsonData {
+                let newUser = User(herokuJSON: response)
+                self.users.append(newUser)
+            }
+            OperationQueue.main.addOperation {
+                self.users = self.users.sorted(by: {
+                    $0.0.id < $0.1.id
+                })
+                self.tableView.reloadData()
+            }
+        }
     }
+    
+    
     
     func configure() {
         view.backgroundColor = UIColor.cyan
         
         navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Add User", style: .plain, target: self, action: #selector(presentAddUserController))
+//        navigationItem.leftBarButtonItem = UIBarButtonItem(title: "🔎", style: .plain, target: self, action: #selector())
         
-        textField.backgroundColor = UIColor.lightGray
+        let paddingview = UIView(frame: CGRect(x: 0, y: 0, width: 15, height: textField.frame.height))
+        textField.backgroundColor = UIColor.lightText
         textField.placeholder = "Search for names or cities"
+        textField.leftView = paddingview
+        textField.leftViewMode = UITextFieldViewMode.always
         
         
         searchButton.setTitle("Search", for: .normal)
@@ -68,6 +97,10 @@ class MainViewController: UIViewController {
         
         excludeLabel.text = "Excluding"
         
+        let items = ["Names", "Cities"]
+        segmentedContoller = UISegmentedControl(items: items)
+        segmentedContoller.selectedSegmentIndex = 0
+        
         tableView.delegate = self
         tableView.dataSource = self
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "User")
@@ -78,41 +111,53 @@ class MainViewController: UIViewController {
         view.addSubview(textField)
         textField.snp.makeConstraints {
             $0.leading.equalToSuperview().offset(10)
-            $0.top.equalToSuperview().offset(150)
-            $0.width.equalToSuperview().dividedBy(2)
-        }
-        
-        view.addSubview(tableView)
-        tableView.snp.makeConstraints {
-            $0.bottom.width.equalToSuperview()
-            $0.height.equalToSuperview().multipliedBy(0.66)
+            $0.top.equalToSuperview().offset(80)
+            $0.width.equalToSuperview().multipliedBy(0.66)
+            $0.height.equalToSuperview().dividedBy(20)
         }
         
         view.addSubview(searchButton)
         searchButton.snp.makeConstraints {
-            $0.bottom.equalTo(tableView.snp.top).offset(-20)
-            $0.trailing.equalToSuperview().offset(-20)
+            $0.centerY.equalTo(textField.snp.centerY)
+            $0.leading.equalTo(textField.snp.trailing).offset(5)
+            $0.trailing.equalToSuperview().offset(-5)
         }
         
         view.addSubview(excludeButton)
         excludeButton.snp.makeConstraints {
-            $0.bottom.equalTo(tableView.snp.top).offset(-20)
+            $0.top.equalTo(textField.snp.bottom).offset(20)
             $0.leading.equalToSuperview().offset(20)
-            $0.width.equalToSuperview().dividedBy(10)
+            $0.width.equalToSuperview().dividedBy(15)
             $0.height.equalTo(excludeButton.snp.width)
         }
         
         view.addSubview(excludeLabel)
         excludeLabel.snp.makeConstraints {
-            $0.centerX.equalTo(excludeButton.snp.centerX)
-            $0.leading.equalTo(excludeButton.snp.trailing)
+            $0.centerY.equalTo(excludeButton.snp.centerY)
+            $0.leading.equalTo(excludeButton.snp.trailing).offset(5)
+            $0.height.equalTo(excludeButton.snp.height)
         }
+        
+        view.addSubview(segmentedContoller)
+        segmentedContoller.snp.makeConstraints {
+            $0.centerY.equalTo(excludeLabel.snp.centerY)
+            $0.leading.equalTo(excludeLabel.snp.trailing).offset(15)
+            $0.trailing.equalToSuperview().offset(-15)
+        }
+        view.addSubview(tableView)
+        tableView.snp.makeConstraints {
+            $0.bottom.width.equalToSuperview()
+            $0.height.equalToSuperview().multipliedBy(0.75)
+        }
+        
+        
+
     }
     
     
     func searchFor() {
         var branch: String
-        searchBranch = .name
+
         switch searchBranch {
         case .name:
             branch = "name"
@@ -134,22 +179,60 @@ class MainViewController: UIViewController {
             }
             OperationQueue.main.addOperation {
                 print("number of users is \(self.users.count)")
+                self.users = self.users.sorted(by: {
+                    $0.0.id < $0.1.id
+                })
                 self.tableView.reloadData()
                 // tableview stuff goes here
             }
         }
     }
     
+    
     func presentAddUserController() {
         addUserViewController = AddUserViewController()
-        
+        addUserViewController.parentVC = self
         view.addSubview(addUserViewController.view)
         addUserViewController.view.snp.makeConstraints {
             $0.edges.equalToSuperview()
         }
         addUserViewController.didMove(toParentViewController: nil)
         view.layoutIfNeeded()
+        
+        print("PARENT = \(addUserViewController.parent)")
+
+        navigationItem.rightBarButtonItem?.title = "Dismiss"
+        navigationItem.rightBarButtonItem?.action = #selector(dismissViewAddUSerController)
     }
+    
+    func dismissViewAddUSerController() {
+        APIClient.getSpotifyUsersData(branch: "people", not: false, nameOrID: nil) { (jsonData) in
+            self.users = []
+            for response in jsonData {
+                let newUser = User(herokuJSON: response)
+                self.users.append(newUser)
+            }
+            OperationQueue.main.addOperation {
+                print("number of users is \(self.users.count)")
+                self.users = self.users.sorted(by: {
+                    $0.0.id < $0.1.id
+                })
+                self.tableView.reloadData()
+            }
+        }
+        
+        navigationItem.rightBarButtonItem?.title = "Add User"
+        navigationItem.rightBarButtonItem?.action = #selector(presentAddUserController)
+
+        willMove(toParentViewController: nil)
+        addUserViewController.view.removeFromSuperview()
+        addUserViewController = nil
+    
+        
+    
+    }
+    
+    
     
     func exclude() {
         isExcludingSearch = !isExcludingSearch

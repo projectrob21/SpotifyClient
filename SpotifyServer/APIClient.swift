@@ -14,10 +14,15 @@ class APIClient {
         
         var rootLink = "https://secret-lake-19671.herokuapp.com/\(branch)/"
         
-        if nameOrID != nil && not == false {
-            rootLink = rootLink + nameOrID!
-        } else if nameOrID != nil && not == true {
-            rootLink = rootLink + "/not/" + nameOrID!
+
+        if nameOrID != nil && nameOrID != "" {
+            if not {
+                rootLink = rootLink + "/not/" + nameOrID!
+            } else {
+                rootLink = rootLink + nameOrID!
+            }
+        } else if nameOrID == "" {
+            rootLink = "https://secret-lake-19671.herokuapp.com/people/"
         }
         // forced unwrapping bad practice, but did safeguard above!
         
